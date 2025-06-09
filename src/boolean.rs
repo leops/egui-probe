@@ -23,13 +23,14 @@ impl<C> EguiProbe<C> for ToggleSwitch<'_, bool> {
 
 impl<C> EguiProbe<C> for ToggleSwitch<'_, Option<bool>> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(
             self.0,
             ui,
+            ctx,
             style,
-            || false,
-            |value, ui, _style| toggle_switch(value, ui),
+            |_| false,
+            |value, ui, _, _style| toggle_switch(value, ui),
         )
     }
 }

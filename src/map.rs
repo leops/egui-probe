@@ -178,13 +178,14 @@ where
     V: EguiProbe<C>,
     S: std::hash::BuildHasher + Default,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(
             self.value,
             ui,
+            ctx,
             style,
-            || HashMap::with_hasher(S::default()),
-            |value, ui, _style| ui.weak(format!("[{}]", value.len())),
+            |_| HashMap::with_hasher(S::default()),
+            |value, ui, _, _style| ui.weak(format!("[{}]", value.len())),
         )
     }
 

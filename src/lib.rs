@@ -243,6 +243,16 @@ where
     }
 }
 
+pub trait EguiConstruct<C> {
+    fn construct(ctx: &mut C) -> Self;
+}
+
+impl<C, T: Default> EguiConstruct<C> for T {
+    fn construct(_ctx: &mut C) -> Self {
+        Self::default()
+    }
+}
+
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct EguiProbeFn<F>(pub F);

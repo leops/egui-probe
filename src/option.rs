@@ -1,14 +1,19 @@
-use crate::{EguiProbe, Style};
+use crate::{EguiConstruct, EguiProbe, Style};
 
 impl<T, C> EguiProbe<C> for Option<T>
 where
-    T: EguiProbe<C> + Default,
+    T: EguiProbe<C> + EguiConstruct<C>,
 {
     #[inline(always)]
     fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
-        option_probe_with(self, ui, style, T::default, |value, ui, style| {
-            value.probe(ui, ctx, style)
-        })
+        option_probe_with(
+            self,
+            ui,
+            ctx,
+            style,
+            T::construct,
+            |value, ui, ctx, style| value.probe(ui, ctx, style),
+        )
     }
 
     #[inline(always)]
@@ -25,12 +30,13 @@ where
 }
 
 #[inline(always)]
-pub fn option_probe_with<T>(
+pub fn option_probe_with<T, C>(
     value: &mut Option<T>,
     ui: &mut egui::Ui,
+    ctx: &mut C,
     style: &Style,
-    default: impl FnOnce() -> T,
-    probe: impl FnOnce(&mut T, &mut egui::Ui, &Style) -> egui::Response,
+    construct: impl FnOnce(&mut C) -> T,
+    probe: impl FnOnce(&mut T, &mut egui::Ui, &mut C, &Style) -> egui::Response,
 ) -> egui::Response {
     let mut changed = false;
     let mut r = ui
@@ -46,7 +52,7 @@ pub fn option_probe_with<T>(
 
             match (checked, value.is_some()) {
                 (true, false) => {
-                    *value = Some(default());
+                    *value = Some(construct(ctx));
                     changed = true;
                 }
                 (false, true) => {
@@ -57,7 +63,7 @@ pub fn option_probe_with<T>(
             }
 
             if let Some(value) = value {
-                changed |= probe(value, ui, style).changed();
+                changed |= probe(value, ui, ctx, style).changed();
             }
         })
         .response;

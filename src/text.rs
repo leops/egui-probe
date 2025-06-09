@@ -35,22 +35,28 @@ impl<C> EguiProbe<C> for EguiProbeMultiline<'_, &str> {
 
 impl<C> EguiProbe<C> for EguiProbeMultiline<'_, Option<String>> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
-        option_probe_with(self.string, ui, style, String::new, |string, ui, _| {
-            ui.add(egui::TextEdit::multiline(string))
-        })
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
+        option_probe_with(
+            self.string,
+            ui,
+            ctx,
+            style,
+            |_| String::new(),
+            |string, ui, _, _| ui.add(egui::TextEdit::multiline(string)),
+        )
     }
 }
 
 impl<C> EguiProbe<C> for EguiProbeMultiline<'_, Option<&str>> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(
             self.string,
             ui,
+            ctx,
             style,
-            || "",
-            |string, ui, _| ui.add(egui::TextEdit::multiline(string)),
+            |_| "",
+            |string, ui, _, _| ui.add(egui::TextEdit::multiline(string)),
         )
     }
 }

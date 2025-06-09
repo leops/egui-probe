@@ -127,9 +127,9 @@ macro_rules! impl_for_num_types {
 
         impl<C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeFull> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = $num_type::MIN..=$num_type::MAX;
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     ui.add(egui::DragValue::new(value).range(range))
                 })
             }
@@ -137,9 +137,9 @@ macro_rules! impl_for_num_types {
 
         impl<C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeFrom<$num_type>> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = self.range.start..=$num_type::MAX;
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     let r = ui.add(egui::DragValue::new(value).range(range));
                     ui.weak(format!("{}..", self.range.start));
                     r
@@ -149,9 +149,9 @@ macro_rules! impl_for_num_types {
 
         impl<C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeToInclusive<$num_type>> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = $num_type::MIN..=self.range.end;
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     let r = ui.add(egui::DragValue::new(value).range(range));
                     ui.weak(format!("..={}", self.range.end));
                     r
@@ -161,9 +161,9 @@ macro_rules! impl_for_num_types {
 
         impl<C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeInclusive<$num_type>> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = self.range.clone();
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     let r = ui.add(egui::DragValue::new(value).range(range));
                     ui.weak(format!("{}..={}", self.range.start(), self.range.end()));
                     r
@@ -241,9 +241,9 @@ macro_rules! impl_for_num_types {
 
         impl<S, C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeFull, S> where S: Copy + Into<f64> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = $num_type::MIN..=$num_type::MAX;
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     ui.add(egui::DragValue::new(value).range(range).speed(self.step.into()))
                 })
             }
@@ -251,9 +251,9 @@ macro_rules! impl_for_num_types {
 
         impl<S, C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeFrom<$num_type>, S> where S: Copy + Into<f64> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = self.range.start..=$num_type::MAX;
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     let r = ui.add(egui::DragValue::new(value).range(range).speed(self.step.into()));
                     ui.weak(format!("{}..", self.range.start));
                     r
@@ -263,9 +263,9 @@ macro_rules! impl_for_num_types {
 
         impl<S, C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeToInclusive<$num_type>, S> where S: Copy + Into<f64> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = $num_type::MIN..=self.range.end;
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     let r = ui.add(egui::DragValue::new(value).range(range).speed(self.step.into()));
                     ui.weak(format!("..={}", self.range.end));
                     r
@@ -275,9 +275,9 @@ macro_rules! impl_for_num_types {
 
         impl<S, C> EguiProbe<C> for EguiProbeRange<'_, Option<$num_type>, RangeInclusive<$num_type>, S> where S: Copy + Into<f64> {
             #[inline(always)]
-            fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+            fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
                 let range = self.range.clone();
-                option_probe_with(self.value, ui, style, $num_type::default, |value, ui, _| {
+                option_probe_with(self.value, ui, ctx, style, |_| $num_type::default(), |value, ui, _, _| {
                     let r = ui.add(egui::DragValue::new(value).range(range).speed(self.step.into()));
                     ui.weak(format!("{}..={}", self.range.start(), self.range.end()));
                     r

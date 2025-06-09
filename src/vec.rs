@@ -1,19 +1,19 @@
 use crate::{
-    EguiProbe,
+    EguiConstruct, EguiProbe,
     collections::{DeleteMe, EguiProbeFrozen},
     option::option_probe_with,
 };
 
 impl<T, C> EguiProbe<C> for Vec<T>
 where
-    T: EguiProbe<C> + Default,
+    T: EguiProbe<C> + EguiConstruct<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &crate::Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &crate::Style) -> egui::Response {
         ui.horizontal(|ui| {
             ui.weak(format!("[{}]", self.len()));
             let r = ui.small_button(style.add_button_text());
             if r.clicked() {
-                self.push(T::default());
+                self.push(T::construct(ctx));
             }
         })
         .response
@@ -62,10 +62,15 @@ impl<T, C> EguiProbe<C> for EguiProbeFrozen<'_, Option<Vec<T>>>
 where
     T: EguiProbe<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &crate::Style) -> egui::Response {
-        option_probe_with(self.value, ui, style, Vec::new, |value, ui, _style| {
-            ui.weak(format!("[{}]", value.len()))
-        })
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &crate::Style) -> egui::Response {
+        option_probe_with(
+            self.value,
+            ui,
+            ctx,
+            style,
+            |_| Vec::new(),
+            |value, ui, _, _style| ui.weak(format!("[{}]", value.len())),
+        )
     }
 
     fn iterate_inner(
