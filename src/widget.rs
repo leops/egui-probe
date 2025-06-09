@@ -190,10 +190,7 @@ pub struct Probe<'a, T> {
     value: &'a mut T,
 }
 
-impl<'a, T> Probe<'a, T>
-where
-    T: EguiProbe,
-{
+impl<'a, T> Probe<'a, T> {
     /// Creates a new `Probe` widget.
     pub fn new(value: &'a mut T) -> Self {
         Probe {
@@ -210,7 +207,10 @@ where
     }
 
     /// Show probbing UI to edit the value.
-    pub fn show(self, ui: &mut egui::Ui) -> egui::Response {
+    pub fn show<C>(self, ui: &mut egui::Ui, ctx: &mut C) -> egui::Response
+    where
+        T: EguiProbe<C>,
+    {
         let mut changed = false;
 
         let mut r = ui
@@ -227,6 +227,7 @@ where
 
                 if let Some(label) = self.header {
                     let mut header = show_header(
+                        ctx,
                         label,
                         self.value,
                         &mut layout,
@@ -239,6 +240,7 @@ where
 
                     if header.openness > 0.0 {
                         show_table(
+                            ctx,
                             self.value,
                             &mut header,
                             &mut layout,
@@ -251,7 +253,7 @@ where
                     } else {
                         let mut got_inner = false;
 
-                        self.value.iterate_inner(ui, &mut |_, _, _| {
+                        self.value.iterate_inner(ui, ctx, &mut |_, _, _, _| {
                             got_inner = true;
                         });
 
@@ -261,6 +263,7 @@ where
                     header.store(child_ui.ctx());
                 } else {
                     show_table_direct(
+                        ctx,
                         self.value,
                         &mut layout,
                         0,
@@ -292,9 +295,10 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn show_header(
+fn show_header<C>(
+    ctx: &mut C,
     label: impl Into<WidgetText>,
-    value: &mut dyn EguiProbe,
+    value: &mut dyn EguiProbe<C>,
     layout: &mut ProbeLayout,
     indent: usize,
     ui: &mut egui::Ui,
@@ -316,7 +320,7 @@ fn show_header(
 
         layout.inner_value_ui(id.with("value"), ui, |ui| {
             *changed |= value
-                .probe(ui, style)
+                .probe(ui, ctx, style)
                 .labelled_by(label_response.id)
                 .changed();
         });
@@ -326,8 +330,9 @@ fn show_header(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn show_table(
-    value: &mut dyn EguiProbe,
+fn show_table<C>(
+    ctx: &mut C,
+    value: &mut dyn EguiProbe<C>,
     header: &mut ProbeHeader,
     layout: &mut ProbeLayout,
     indent: usize,
@@ -356,10 +361,11 @@ fn show_table(
 
     let mut got_inner = false;
     let mut idx = 0;
-    value.iterate_inner(&mut table_ui, &mut |label, table_ui, value| {
+    value.iterate_inner(&mut table_ui, ctx, &mut |label, table_ui, ctx, value| {
         got_inner = true;
 
         let mut header = show_header(
+            ctx,
             label,
             value,
             layout,
@@ -372,6 +378,7 @@ fn show_table(
 
         if header.openness > 0.0 {
             show_table(
+                ctx,
                 value,
                 &mut header,
                 layout,
@@ -384,7 +391,7 @@ fn show_table(
         } else {
             let mut got_inner = false;
 
-            value.iterate_inner(ui, &mut |_, _, _| {
+            value.iterate_inner(ui, ctx, &mut |_, _, _, _| {
                 got_inner = true;
             });
 
@@ -405,8 +412,9 @@ fn show_table(
     header.set_body_height(table_height);
 }
 
-fn show_table_direct(
-    value: &mut dyn EguiProbe,
+fn show_table_direct<C>(
+    ctx: &mut C,
+    value: &mut dyn EguiProbe<C>,
     layout: &mut ProbeLayout,
     indent: usize,
     ui: &mut egui::Ui,
@@ -432,10 +440,11 @@ fn show_table_direct(
 
     let mut got_inner = false;
     let mut idx = 0;
-    value.iterate_inner(&mut table_ui, &mut |label, table_ui, value| {
+    value.iterate_inner(&mut table_ui, ctx, &mut |label, table_ui, ctx, value| {
         got_inner = true;
 
         let mut header = show_header(
+            ctx,
             label,
             value,
             layout,
@@ -448,6 +457,7 @@ fn show_table_direct(
 
         if header.openness > 0.0 {
             show_table(
+                ctx,
                 value,
                 &mut header,
                 layout,
@@ -460,7 +470,7 @@ fn show_table_direct(
         } else {
             let mut got_inner = false;
 
-            value.iterate_inner(ui, &mut |_, _, _| {
+            value.iterate_inner(ui, ctx, &mut |_, _, _, _| {
                 got_inner = true;
             });
 

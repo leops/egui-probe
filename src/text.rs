@@ -1,15 +1,15 @@
-use crate::{option::option_probe_with, EguiProbe, Style};
+use crate::{EguiProbe, Style, option::option_probe_with};
 
-impl EguiProbe for String {
+impl<C> EguiProbe<C> for String {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _: &Style) -> egui::Response {
         ui.add(egui::TextEdit::singleline(self))
     }
 }
 
-impl EguiProbe for &str {
+impl<C> EguiProbe<C> for &str {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _: &Style) -> egui::Response {
         ui.add(egui::TextEdit::singleline(self))
     }
 }
@@ -19,32 +19,32 @@ pub struct EguiProbeMultiline<'a, T> {
     pub string: &'a mut T,
 }
 
-impl EguiProbe for EguiProbeMultiline<'_, String> {
+impl<C> EguiProbe<C> for EguiProbeMultiline<'_, String> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _: &Style) -> egui::Response {
         ui.add(egui::TextEdit::multiline(self.string))
     }
 }
 
-impl EguiProbe for EguiProbeMultiline<'_, &str> {
+impl<C> EguiProbe<C> for EguiProbeMultiline<'_, &str> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _: &Style) -> egui::Response {
         ui.add(egui::TextEdit::multiline(self.string))
     }
 }
 
-impl EguiProbe for EguiProbeMultiline<'_, Option<String>> {
+impl<C> EguiProbe<C> for EguiProbeMultiline<'_, Option<String>> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(self.string, ui, style, String::new, |string, ui, _| {
             ui.add(egui::TextEdit::multiline(string))
         })
     }
 }
 
-impl EguiProbe for EguiProbeMultiline<'_, Option<&str>> {
+impl<C> EguiProbe<C> for EguiProbeMultiline<'_, Option<&str>> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(
             self.string,
             ui,

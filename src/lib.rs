@@ -184,9 +184,9 @@ impl Style {
 }
 
 /// Provides ability to show probbing UI to values.
-pub trait EguiProbe {
+pub trait EguiProbe<C> {
     /// Shows probbing UI to edit the value.
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response;
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response;
 
     /// Shows probbing UI to edit the inner values.
     ///
@@ -196,47 +196,50 @@ pub trait EguiProbe {
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
-        let _ = (ui, f);
+        let _ = (ui, ctx, f);
     }
 }
 
-impl<P> EguiProbe for &mut P
+impl<C, P> EguiProbe<C> for &mut P
 where
-    P: EguiProbe,
+    P: EguiProbe<C>,
 {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
-        P::probe(*self, ui, style)
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
+        P::probe(*self, ui, ctx, style)
     }
 
     #[inline(always)]
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
-        P::iterate_inner(*self, ui, f);
+        P::iterate_inner(*self, ui, ctx, f);
     }
 }
 
-impl<P> EguiProbe for Box<P>
+impl<C, P> EguiProbe<C> for Box<P>
 where
-    P: EguiProbe,
+    P: EguiProbe<C>,
 {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
-        P::probe(&mut *self, ui, style)
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
+        P::probe(&mut *self, ui, ctx, style)
     }
 
     #[inline(always)]
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
-        P::iterate_inner(&mut *self, ui, f);
+        P::iterate_inner(&mut *self, ui, ctx, f);
     }
 }
 
@@ -244,13 +247,13 @@ where
 #[repr(transparent)]
 pub struct EguiProbeFn<F>(pub F);
 
-impl<F> EguiProbe for EguiProbeFn<F>
+impl<C, F> EguiProbe<C> for EguiProbeFn<F>
 where
-    F: FnMut(&mut egui::Ui, &Style) -> egui::Response,
+    F: FnMut(&mut egui::Ui, &mut C, &Style) -> egui::Response,
 {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
-        (self.0)(ui, style)
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
+        (self.0)(ui, ctx, style)
     }
 }
 
@@ -261,14 +264,15 @@ pub const fn probe_fn<F>(f: F) -> EguiProbeFn<F> {
 }
 
 #[inline(always)]
-pub fn angle(value: &mut f32) -> impl EguiProbe + '_ {
-    probe_fn(move |ui: &mut egui::Ui, _style: &Style| ui.drag_angle(value))
+pub fn angle<C>(value: &mut f32) -> impl EguiProbe<C> + '_ {
+    probe_fn(move |ui: &mut egui::Ui, _ctx: &mut C, _style: &Style| ui.drag_angle(value))
 }
 
 pub mod customize {
     use std::ops::RangeFull;
 
     use super::{
+        EguiProbe, Style,
         boolean::ToggleSwitch,
         collections::EguiProbeFrozen,
         color::{
@@ -278,102 +282,113 @@ pub mod customize {
         num::{EguiProbeRange, StepUnset},
         probe_fn,
         text::EguiProbeMultiline,
-        EguiProbe, Style,
     };
 
     #[inline(always)]
-    pub fn probe_with<'a, T, F>(mut f: F, value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_with<'a, T, F, C>(mut f: F, value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        F: FnMut(&mut T, &mut egui::Ui, &Style) -> egui::Response + 'a,
+        F: FnMut(&mut T, &mut egui::Ui, &mut C, &Style) -> egui::Response + 'a,
     {
-        probe_fn(move |ui: &mut egui::Ui, style: &Style| f(value, ui, style))
+        probe_fn(move |ui: &mut egui::Ui, ctx: &mut C, style: &Style| f(value, ui, ctx, style))
     }
 
     #[inline(always)]
-    pub fn probe_as<'a, T, F, R>(f: F, value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_as<'a, T, F, R, C>(f: F, value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
         F: FnOnce(&'a mut T) -> R,
-        R: EguiProbe + 'a,
+        R: EguiProbe<C> + 'a,
     {
         f(value)
     }
 
     #[inline(always)]
-    pub fn probe_range<'a, T, R>(range: R, value: &'a mut T) -> EguiProbeRange<'a, T, R>
+    pub fn probe_range<'a, T, R, C>(range: R, value: &'a mut T) -> EguiProbeRange<'a, T, R>
     where
-        EguiProbeRange<'a, T, R>: EguiProbe,
+        EguiProbeRange<'a, T, R>: EguiProbe<C>,
     {
-        EguiProbeRange { value, range, step: StepUnset }
+        EguiProbeRange {
+            value,
+            range,
+            step: StepUnset,
+        }
     }
 
     #[inline(always)]
-    pub fn probe_range_step<'a, T, R, S>(range: R, step: S, value: &'a mut T) -> EguiProbeRange<'a, T, R, S>
+    pub fn probe_range_step<'a, T, R, S, C>(
+        range: R,
+        step: S,
+        value: &'a mut T,
+    ) -> EguiProbeRange<'a, T, R, S>
     where
-        EguiProbeRange<'a, T, R, S>: EguiProbe,
+        EguiProbeRange<'a, T, R, S>: EguiProbe<C>,
     {
         EguiProbeRange { value, range, step }
     }
 
     #[inline(always)]
-    pub fn probe_step<'a, T, S>(step: S, value: &'a mut T) -> EguiProbeRange<'a, T, RangeFull, S>
+    pub fn probe_step<'a, T, S, C>(step: S, value: &'a mut T) -> EguiProbeRange<'a, T, RangeFull, S>
     where
-        EguiProbeRange<'a, T, RangeFull, S>: EguiProbe,
+        EguiProbeRange<'a, T, RangeFull, S>: EguiProbe<C>,
     {
-        EguiProbeRange { value, range: .., step }
+        EguiProbeRange {
+            value,
+            range: ..,
+            step,
+        }
     }
 
     #[inline(always)]
-    pub fn probe_multiline<'a, T>(string: &'a mut T) -> EguiProbeMultiline<'a, T>
+    pub fn probe_multiline<'a, T, C>(string: &'a mut T) -> EguiProbeMultiline<'a, T>
     where
-        EguiProbeMultiline<'a, T>: EguiProbe,
+        EguiProbeMultiline<'a, T>: EguiProbe<C>,
     {
         EguiProbeMultiline { string }
     }
 
     #[inline(always)]
-    pub fn probe_toggle_switch<'a, T>(value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_toggle_switch<'a, T, C>(value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        ToggleSwitch<'a, T>: EguiProbe,
+        ToggleSwitch<'a, T>: EguiProbe<C>,
     {
         ToggleSwitch(value)
     }
 
     #[inline(always)]
-    pub fn probe_frozen<'a, T>(value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_frozen<'a, T, C>(value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        EguiProbeFrozen<'a, T>: EguiProbe,
+        EguiProbeFrozen<'a, T>: EguiProbe<C>,
     {
         EguiProbeFrozen { value }
     }
 
     #[inline(always)]
-    pub fn probe_rgb<'a, T>(value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_rgb<'a, T, C>(value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        EguiProbeRgb<'a, T>: EguiProbe,
+        EguiProbeRgb<'a, T>: EguiProbe<C>,
     {
         EguiProbeRgb { value }
     }
 
     #[inline(always)]
-    pub fn probe_rgba<'a, T>(value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_rgba<'a, T, C>(value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        EguiProbeRgba<'a, T>: EguiProbe,
+        EguiProbeRgba<'a, T>: EguiProbe<C>,
     {
         EguiProbeRgba { value }
     }
 
     #[inline(always)]
-    pub fn probe_rgba_premultiplied<'a, T>(value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_rgba_premultiplied<'a, T, C>(value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        EguiProbeRgbaPremultiplied<'a, T>: EguiProbe,
+        EguiProbeRgbaPremultiplied<'a, T>: EguiProbe<C>,
     {
         EguiProbeRgbaPremultiplied { value }
     }
 
     #[inline(always)]
-    pub fn probe_rgba_unmultiplied<'a, T>(value: &'a mut T) -> impl EguiProbe + 'a
+    pub fn probe_rgba_unmultiplied<'a, T, C>(value: &'a mut T) -> impl EguiProbe<C> + 'a
     where
-        EguiProbeRgbaUnmultiplied<'a, T>: EguiProbe,
+        EguiProbeRgbaUnmultiplied<'a, T>: EguiProbe<C>,
     {
         EguiProbeRgbaUnmultiplied { value }
     }
@@ -381,7 +396,6 @@ pub mod customize {
 
 #[cfg(feature = "derive")]
 pub use egui_probe_proc::EguiProbe;
-
 
 #[cfg(feature = "derive")]
 extern crate self as egui_probe;
@@ -414,7 +428,7 @@ fn test_all_attributes() {
         #[egui_probe(skip)]
         skipped: NoProbe,
 
-        #[egui_probe(name  = "renamed")]
+        #[egui_probe(name = "renamed")]
         a: u8,
 
         #[egui_probe(with |_, ui, _| ui.label("a label"))]
@@ -466,6 +480,6 @@ fn test_all_attributes() {
             skipped: (),
 
             b: f32,
-        }
+        },
     }
 }

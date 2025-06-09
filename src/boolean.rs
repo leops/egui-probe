@@ -1,12 +1,12 @@
 use egui::StrokeKind;
 
-use crate::{option_probe_with, BooleanStyle, EguiProbe, Style};
+use crate::{BooleanStyle, EguiProbe, Style, option_probe_with};
 
 pub struct ToggleSwitch<'a, T>(pub &'a mut T);
 
-impl EguiProbe for bool {
+impl<C> EguiProbe<C> for bool {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
         match style.boolean {
             BooleanStyle::Checkbox => ui.add(egui::Checkbox::without_text(self)),
             BooleanStyle::ToggleSwitch => toggle_switch(self, ui),
@@ -14,19 +14,23 @@ impl EguiProbe for bool {
     }
 }
 
-impl EguiProbe for ToggleSwitch<'_, bool> {
+impl<C> EguiProbe<C> for ToggleSwitch<'_, bool> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, _style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _style: &Style) -> egui::Response {
         toggle_switch(self.0, ui)
     }
 }
 
-impl EguiProbe for ToggleSwitch<'_, Option<bool>> {
+impl<C> EguiProbe<C> for ToggleSwitch<'_, Option<bool>> {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
-        option_probe_with(self.0, ui, style, ||false, |value, ui, _style| {
-            toggle_switch(value, ui)
-        })
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
+        option_probe_with(
+            self.0,
+            ui,
+            style,
+            || false,
+            |value, ui, _style| toggle_switch(value, ui),
+        )
     }
 }
 

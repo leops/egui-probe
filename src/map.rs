@@ -1,13 +1,13 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     fmt::Display,
     str::FromStr,
 };
 
 use crate::{
+    EguiProbe, Style,
     collections::{DeleteMe, EguiProbeFrozen},
     option::option_probe_with,
-    EguiProbe, Style,
 };
 
 #[derive(Clone)]
@@ -83,13 +83,13 @@ impl HashMapProbe {
     }
 }
 
-impl<K, V, S> EguiProbe for HashMap<K, V, S>
+impl<K, V, S, C> EguiProbe<C> for HashMap<K, V, S>
 where
     K: Display + FromStr + Eq + std::hash::Hash,
-    V: EguiProbe + Default,
+    V: EguiProbe<C> + Default,
     S: std::hash::BuildHasher,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
         let mut changed = false;
 
         let mut r = ui
@@ -136,47 +136,49 @@ where
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         self.retain(|key, value| {
             let mut item = DeleteMe {
                 value,
                 delete: false,
             };
-            f(&key.to_string(), ui, &mut item);
+            f(&key.to_string(), ui, ctx, &mut item);
             !item.delete
         });
     }
 }
 
-impl<K, V, S> EguiProbe for EguiProbeFrozen<'_, HashMap<K, V, S>>
+impl<K, V, S, C> EguiProbe<C> for EguiProbeFrozen<'_, HashMap<K, V, S>>
 where
     K: Display + Eq + std::hash::Hash,
-    V: EguiProbe,
+    V: EguiProbe<C>,
     S: std::hash::BuildHasher,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _style: &Style) -> egui::Response {
         ui.weak(format!("[{}]", self.value.len()))
     }
 
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         for (key, value) in self.value.iter_mut() {
-            f(&key.to_string(), ui, value);
+            f(&key.to_string(), ui, ctx, value);
         }
     }
 }
 
-impl<K, V, S> EguiProbe for EguiProbeFrozen<'_, Option<HashMap<K, V, S>>>
+impl<K, V, S, C> EguiProbe<C> for EguiProbeFrozen<'_, Option<HashMap<K, V, S>>>
 where
     K: Display + Eq + std::hash::Hash,
-    V: EguiProbe,
+    V: EguiProbe<C>,
     S: std::hash::BuildHasher + Default,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(
             self.value,
             ui,
@@ -189,11 +191,12 @@ where
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         if let Some(map) = self.value {
             for (key, value) in map.iter_mut() {
-                f(&key.to_string(), ui, value);
+                f(&key.to_string(), ui, ctx, value);
             }
         }
     }

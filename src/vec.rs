@@ -1,14 +1,14 @@
 use crate::{
+    EguiProbe,
     collections::{DeleteMe, EguiProbeFrozen},
     option::option_probe_with,
-    EguiProbe,
 };
 
-impl<T> EguiProbe for Vec<T>
+impl<T, C> EguiProbe<C> for Vec<T>
 where
-    T: EguiProbe + Default,
+    T: EguiProbe<C> + Default,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, style: &crate::Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &crate::Style) -> egui::Response {
         ui.horizontal(|ui| {
             ui.weak(format!("[{}]", self.len()));
             let r = ui.small_button(style.add_button_text());
@@ -22,7 +22,8 @@ where
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         let mut idx = 0;
         self.retain_mut(|value| {
@@ -30,37 +31,38 @@ where
                 value,
                 delete: false,
             };
-            f(&format!("[{idx}]"), ui, &mut item);
+            f(&format!("[{idx}]"), ui, ctx, &mut item);
             idx += 1;
             !item.delete
         });
     }
 }
 
-impl<T> EguiProbe for EguiProbeFrozen<'_, Vec<T>>
+impl<T, C> EguiProbe<C> for EguiProbeFrozen<'_, Vec<T>>
 where
-    T: EguiProbe,
+    T: EguiProbe<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _style: &crate::Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _style: &crate::Style) -> egui::Response {
         ui.weak(format!("[{}]", self.value.len()))
     }
 
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         for (i, value) in self.value.iter_mut().enumerate() {
-            f(&format!("[{i}]"), ui, value);
+            f(&format!("[{i}]"), ui, ctx, value);
         }
     }
 }
 
-impl<T> EguiProbe for EguiProbeFrozen<'_, Option<Vec<T>>>
+impl<T, C> EguiProbe<C> for EguiProbeFrozen<'_, Option<Vec<T>>>
 where
-    T: EguiProbe,
+    T: EguiProbe<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, style: &crate::Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, style: &crate::Style) -> egui::Response {
         option_probe_with(self.value, ui, style, Vec::new, |value, ui, _style| {
             ui.weak(format!("[{}]", value.len()))
         })
@@ -69,11 +71,12 @@ where
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         if let Some(vec) = self.value {
             for (i, value) in vec.iter_mut().enumerate() {
-                f(&format!("[{i}]"), ui, value);
+                f(&format!("[{i}]"), ui, ctx, value);
             }
         }
     }

@@ -1,13 +1,13 @@
 use crate::{EguiProbe, Style};
 
-impl<T> EguiProbe for Option<T>
+impl<T, C> EguiProbe<C> for Option<T>
 where
-    T: EguiProbe + Default,
+    T: EguiProbe<C> + Default,
 {
     #[inline(always)]
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
         option_probe_with(self, ui, style, T::default, |value, ui, style| {
-            value.probe(ui, style)
+            value.probe(ui, ctx, style)
         })
     }
 
@@ -15,10 +15,11 @@ where
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         if let Some(value) = self {
-            value.iterate_inner(ui, f);
+            value.iterate_inner(ui, ctx, f);
         }
     }
 }

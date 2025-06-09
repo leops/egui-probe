@@ -6,14 +6,14 @@ pub struct DeleteMe<'a, T> {
     pub delete: bool,
 }
 
-impl<T> EguiProbe for DeleteMe<'_, T>
+impl<T, C> EguiProbe<C> for DeleteMe<'_, T>
 where
-    T: EguiProbe,
+    T: EguiProbe<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, style: &Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, ctx: &mut C, style: &Style) -> egui::Response {
         let mut r = ui
             .horizontal(|ui| {
-                self.value.probe(ui, style);
+                self.value.probe(ui, ctx, style);
                 ui.add_space(ui.spacing().item_spacing.x);
                 if ui.small_button(style.remove_button_text()).clicked() {
                     self.delete = true;
@@ -31,9 +31,10 @@ where
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
-        self.value.iterate_inner(ui, f);
+        self.value.iterate_inner(ui, ctx, f);
     }
 }
 

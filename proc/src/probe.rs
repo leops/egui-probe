@@ -1,7 +1,7 @@
 #![allow(clippy::use_self)]
 
 use convert_case::Casing;
-use syn::{parse::Parse, spanned::Spanned, LitStr};
+use syn::{LitStr, parse::Parse, spanned::Spanned};
 
 proc_easy::easy_token!(skip);
 proc_easy::easy_token!(with);
@@ -139,7 +139,6 @@ impl Parse for RangeArg {
         Ok(Self { range, step })
     }
 }
-
 
 proc_easy::easy_argument_value! {
     struct Range {
@@ -335,29 +334,28 @@ fn field_probe(idx: usize, field: &syn::Field) -> syn::Result<Option<proc_macro2
                 &mut probe_as(#expr, #binding)
             }
         }
-        Some(FieldProbeKind::Range(range)) => {
-
-            match (range.arg.range, range.arg.step) {
-                (None, None) => { unreachable!() }
-                (Some(range), None) => {
-                    quote::quote_spanned! {field.span() =>
-                        &mut probe_range(#range, #binding)
-                    }
-                }
-                (None, Some(step)) => {
-                    let step = step.expr;
-                    quote::quote_spanned! {field.span() =>
-                        &mut probe_step(#step, #binding)
-                    }
-                }
-                (Some(range), Some(step)) => {
-                    let step = step.expr;
-                    quote::quote_spanned! {field.span() =>
-                        &mut probe_range_step(#range, #step, #binding)
-                    }
+        Some(FieldProbeKind::Range(range)) => match (range.arg.range, range.arg.step) {
+            (None, None) => {
+                unreachable!()
+            }
+            (Some(range), None) => {
+                quote::quote_spanned! {field.span() =>
+                    &mut probe_range(#range, #binding)
                 }
             }
-        }
+            (None, Some(step)) => {
+                let step = step.expr;
+                quote::quote_spanned! {field.span() =>
+                    &mut probe_step(#step, #binding)
+                }
+            }
+            (Some(range), Some(step)) => {
+                let step = step.expr;
+                quote::quote_spanned! {field.span() =>
+                    &mut probe_range_step(#range, #step, #binding)
+                }
+            }
+        },
         Some(FieldProbeKind::Multiline(_)) => {
             quote::quote_spanned! {field.span() =>
                 &mut probe_multiline(#binding)
@@ -521,7 +519,7 @@ fn variant_inline_probe(variant: &syn::Variant) -> syn::Result<proc_macro2::Toke
 
         let tokens = quote::quote_spanned! {variant.ident.span() =>
             #pattern => {
-                ::egui_probe::EguiProbe::probe(#field_probe, _ui, _style);
+                ::egui_probe::EguiProbe::<_>::probe(#field_probe, _ui, _ctx, _style);
             }
         };
 
@@ -584,7 +582,7 @@ fn variant_iterate_inner(
         let field_probe = &all_fields_probe[0];
 
         let tokens = quote::quote_spanned! {variant.ident.span() =>
-            #pattern => ::egui_probe::EguiProbe::iterate_inner(#field_probe, _ui, _f),
+            #pattern => ::egui_probe::EguiProbe::<_>::iterate_inner(#field_probe, _ui, _ctx, _f),
         };
 
         Ok(tokens)
@@ -606,7 +604,7 @@ fn variant_iterate_inner(
 
         let tokens = quote::quote_spanned! {variant.ident.span() =>
             #pattern => {
-                #(_f(#fields_name, _ui, #fields_probe);)*
+                #(_f(#fields_name, _ui, ctx, #fields_probe);)*
             },
         };
 
@@ -622,7 +620,11 @@ pub fn derive(input: syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
     let attributes: TypeAttributes = proc_easy::EasyAttributes::parse(&input.attrs, ident.span())?;
     let rename_case = attributes.rename_all.map(|rename_all| rename_all.case);
 
-    let (impl_generics, ty_generics, mut where_clause) = generics.split_for_impl();
+    let (_, ty_generics, mut where_clause) = generics.split_for_impl();
+
+    let mut owned_generics = generics.clone();
+    owned_generics.params.push(syn::parse_quote! { C });
+    let (impl_generics, _, _) = owned_generics.split_for_impl();
 
     let mut extended_where_clause;
     if let Some(derive_where_clause) = attributes.where_clause {
@@ -683,23 +685,23 @@ pub fn derive(input: syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                 let field_probe = &all_fields_probe[0];
 
                 let tokens = quote::quote! {
-                    impl #impl_generics ::egui_probe::EguiProbe for #ident #ty_generics
+                    impl #impl_generics ::egui_probe::EguiProbe<C> for #ident #ty_generics
                     #where_clause
                     {
-                        fn probe(&mut self, ui: &mut ::egui_probe::egui::Ui, style: &::egui_probe::Style) -> ::egui_probe::egui::Response {
+                        fn probe(&mut self, ui: &mut ::egui_probe::egui::Ui, ctx: &mut C, style: &::egui_probe::Style) -> ::egui_probe::egui::Response {
                             use ::egui_probe::private::*;
 
                             let #pattern = self;
 
-                            ::egui_probe::EguiProbe::probe(#field_probe, ui, style)
+                            ::egui_probe::EguiProbe::<C>::probe(#field_probe, ui, ctx, style)
                         }
 
-                        fn iterate_inner(&mut self, ui: &mut ::egui_probe::egui::Ui, f: &mut dyn FnMut(&str, &mut ::egui_probe::egui::Ui, &mut dyn ::egui_probe::EguiProbe)) {
+                        fn iterate_inner(&mut self, ui: &mut ::egui_probe::egui::Ui, ctx: &mut C, f: &mut dyn FnMut(&str, &mut ::egui_probe::egui::Ui, &mut C, &mut dyn ::egui_probe::EguiProbe<C>)) {
                             use ::egui_probe::private::*;
 
                             let #pattern = self;
 
-                            ::egui_probe::EguiProbe::iterate_inner(#field_probe, ui, f)
+                            ::egui_probe::EguiProbe::<C>::iterate_inner(#field_probe, ui, ctx, f)
                         }
                     }
                 };
@@ -712,20 +714,20 @@ pub fn derive(input: syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                     .collect::<syn::Result<_>>()?;
 
                 let tokens = quote::quote! {
-                    impl #impl_generics ::egui_probe::EguiProbe for #ident #ty_generics
+                    impl #impl_generics ::egui_probe::EguiProbe<C> for #ident #ty_generics
                     #where_clause
                     {
-                        fn probe(&mut self, ui: &mut ::egui_probe::egui::Ui, _style: &::egui_probe::Style) -> ::egui_probe::egui::Response {
+                        fn probe(&mut self, ui: &mut ::egui_probe::egui::Ui, ctx: &mut C, _style: &::egui_probe::Style) -> ::egui_probe::egui::Response {
                             ui.weak(::egui_probe::private::stringify!(#ident))
                         }
 
-                        fn iterate_inner(&mut self, _ui: &mut ::egui_probe::egui::Ui, _f: &mut dyn FnMut(&str, &mut ::egui_probe::egui::Ui, &mut dyn ::egui_probe::EguiProbe)) {
+                        fn iterate_inner(&mut self, _ui: &mut ::egui_probe::egui::Ui, ctx: &mut C, _f: &mut dyn FnMut(&str, &mut ::egui_probe::egui::Ui, &mut C, &mut dyn ::egui_probe::EguiProbe<C>)) {
                             use ::egui_probe::private::*;
 
                             let #pattern = self;
 
                             #(
-                                _f(#fields_name, _ui, #all_fields_probe);
+                                _f(#fields_name, _ui, ctx, #all_fields_probe);
                             )*
                         }
                     }
@@ -779,10 +781,10 @@ pub fn derive(input: syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
             };
 
             let tokens = quote::quote! {
-                impl #impl_generics ::egui_probe::EguiProbe for #ident #ty_generics
+                impl #impl_generics ::egui_probe::EguiProbe<C> for #ident #ty_generics
                     #where_clause
                     {
-                        fn probe(&mut self, ui: &mut ::egui_probe::egui::Ui, _style: &::egui_probe::Style) -> ::egui_probe::egui::Response {
+                        fn probe(&mut self, ui: &mut ::egui_probe::egui::Ui, ctx: &mut C, _style: &::egui_probe::Style) -> ::egui_probe::egui::Response {
                             use ::egui_probe::private::*;
 
                             ui.horizontal(|_ui| {
@@ -811,7 +813,7 @@ pub fn derive(input: syn::DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                             }).response
                         }
 
-                        fn iterate_inner(&mut self, _ui: &mut egui_probe::egui::Ui, _f: &mut dyn FnMut(&str, &mut egui_probe::egui::Ui, &mut dyn ::egui_probe::EguiProbe)) {
+                        fn iterate_inner(&mut self, _ui: &mut egui_probe::egui::Ui, ctx: &mut C, _f: &mut dyn FnMut(&str, &mut egui_probe::egui::Ui, &mut C, &mut dyn ::egui_probe::EguiProbe<C>)) {
                             use ::egui_probe::private::*;
 
                             match self {#(

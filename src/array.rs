@@ -1,39 +1,41 @@
 use crate::EguiProbe;
 
-impl<T, const N: usize> EguiProbe for [T; N]
+impl<T, C, const N: usize> EguiProbe<C> for [T; N]
 where
-    T: EguiProbe,
+    T: EguiProbe<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _style: &crate::Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _style: &crate::Style) -> egui::Response {
         ui.weak(format!("[{N}]"))
     }
 
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         for (i, value) in self.iter_mut().enumerate() {
-            f(&format!("[{i}]"), ui, value);
+            f(&format!("[{i}]"), ui, ctx, value);
         }
     }
 }
 
-impl<T> EguiProbe for [T]
+impl<T, C> EguiProbe<C> for [T]
 where
-    T: EguiProbe,
+    T: EguiProbe<C>,
 {
-    fn probe(&mut self, ui: &mut egui::Ui, _style: &crate::Style) -> egui::Response {
+    fn probe(&mut self, ui: &mut egui::Ui, _ctx: &mut C, _style: &crate::Style) -> egui::Response {
         ui.weak(format!("[{}]", self.len()))
     }
 
     fn iterate_inner(
         &mut self,
         ui: &mut egui::Ui,
-        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut dyn EguiProbe),
+        ctx: &mut C,
+        f: &mut dyn FnMut(&str, &mut egui::Ui, &mut C, &mut dyn EguiProbe<C>),
     ) {
         for (i, value) in self.iter_mut().enumerate() {
-            f(&format!("[{i}]"), ui, value);
+            f(&format!("[{i}]"), ui, ctx, value);
         }
     }
 }
