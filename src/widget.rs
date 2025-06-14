@@ -22,7 +22,7 @@ impl ProbeHeader {
     fn load(cx: &egui::Context, id: egui::Id) -> ProbeHeader {
         let state = cx.data_mut(|d| d.get_temp(id)).unwrap_or(ProbeHeaderState {
             has_inner: false,
-            open: false,
+            open: true,
             body_height: 0.0,
         });
 
